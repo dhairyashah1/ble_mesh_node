@@ -24,13 +24,42 @@
 #include "board.h"
 #include "ble_mesh_example_init.h"
 
+// Add relevant header files ////////////////////////////////////////////////////////////////////////////
+#include "driver/gpio.h"
+#include "esp_event.h"
+// #include "esp_event_loop.h"
+#include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "sdkconfig.h"
+// #include "esp_button.h"
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define GPIO_PIN_14 14 // GPIO for toggling onoff state ///////////////////////////////////////////////
+
 #define TAG "EXAMPLE"
 
 #define CID_ESP 0x02E5
 
+#define STATE_PUBLISH_ADDR (0xC000) // Publish Address //////////////////////////////////////////////
+
 extern struct _led_state led_state[3];
 
 static uint8_t dev_uuid[16] = { 0xdd, 0xdd };
+
+// Set Config Model Publishing Parameters //////////////////////////////////////////////////////////
+esp_ble_mesh_cfg_model_pub_set_t mod_pub_set = {
+        .model_id = ESP_BLE_MESH_MODEL_ID_GEN_ONOFF_SRV,
+        .publish_addr = 0xC000,
+        .cred_flag = false,
+        .publish_period = 0,
+        .publish_retransmit = 0,
+        .publish_ttl = 7
+        // .company_id = 0xFFFF,
+        // .element_addr =,
+        // .publish_app_idx = ,
+};
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static esp_ble_mesh_cfg_srv_t config_server = {
     .relay = ESP_BLE_MESH_RELAY_DISABLED,
@@ -310,6 +339,17 @@ static esp_err_t ble_mesh_init(void)
     return err;
 }
 
+// button handler added /////////////////////////////////
+static void button_handler(void *arg)
+{
+    static bool led_state = false;
+    led_state = !led_state;
+    // gpio_set_level(LED_G, led_state);
+    board_led_operation(LED_G, LED_ON);
+    vTaskDelay(10);
+    board_led_operation(LED_G, LED_OFF);
+}
+
 void app_main(void)
 {
     esp_err_t err;
@@ -338,4 +378,28 @@ void app_main(void)
     if (err) {
         ESP_LOGE(TAG, "Bluetooth mesh init failed (err %d)", err);
     }
+
+    // added code for button handle ////////////////////////////////////////////////////////////////////////////////
+    // esp_button_handle_t button_handle;
+    // err = esp_button_create(&button_handle, ESP_BUTTON_ACTIVE_LOW, BOOT_BUTTON_GPIO_PIN, 0, button_handler);
+    // if (err != ESP_OK) {
+    //     // Handle error
+    // }
+
+    // // Start the button component
+    // err = esp_button_start(button_handle);
+    // if (err != ESP_OK) {
+        // Handle error
+    int flag = 0;
+    while(1){
+        if(gpio_get_level(GPIO_NUM_14)==1 && flag==0){
+            board_led_operation(LED_G, LED_ON);
+            flag = 1;
+        }
+        else{
+            flag = 0;
+        }
+        vTaskDelay(10);
+    }
+    //}////////////////////////////////////////////////////////////////////////////////////////////////////
 }
